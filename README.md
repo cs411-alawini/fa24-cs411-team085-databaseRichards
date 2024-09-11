@@ -1,1 +1,1 @@
-# fa24-cs411-team085-databaseRichards
+# Team085-databaseRichards
