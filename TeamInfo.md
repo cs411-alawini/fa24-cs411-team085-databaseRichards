@@ -1,13 +1,28 @@
-Basic Information:
+# team085-databaseRichards
 
-TeamID:	Team-085
+## Basic Information
 
-TeamName:	databaseRichards
+|   Info      |        Description     |
+| ----------- | ---------------------- |
+| TeamID      |        Team-085        |
+| TeamName    |     databaseRichards   |
+| Captain     |       Abhay Benoy      |
+| Captain     |  abhayb2@illinois.edu  |
+| Member1     |       Nishk Patel      |
+| Member1     |  nishkdp2@illinois.edu |
+| Member2     |     Aarush Agrawal     |
+| Member2     |  aarusha2@illinois.edu |
+| Member3     |       Ethan Mathew     |
+| Member3     |  ethantm2@illinois.edu |
 
-Captain:	Abhay Benoy,	abhayb2@illinois.edu
+## Project Information
 
-Member1:	Aarush Agrawal,	aarusha2@illinois.edu
+|   Info      |        Description     |
+| ----------- | ---------------------- |
+|  Title      |       ProjectTitle     |
+| System URL  |      link_to_system    |
+| Video Link  |      link_to_video     |
 
-Member2:	Ethan Thomas Mathew  ,	ethantm2@illinois.edu
+## Project Summary
 
-Member3:	Nishk Patel,	nishkdp2@illinois.edu
+This is a summary of the project!
