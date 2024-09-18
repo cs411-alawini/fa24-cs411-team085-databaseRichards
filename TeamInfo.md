@@ -19,10 +19,11 @@
 
 |   Info      |        Description     |
 | ----------- | ---------------------- |
-|  Title      |       ProjectTitle     |
+|  Title      |  NFL Betting Assistant |
 | System URL  |      link_to_system    |
 | Video Link  |      link_to_video     |
 
 ## Project Summary
 
-This is a summary of the project!
+The NFL Sports Betting Assistant is a web-based application designed to help users make informed decisions about NFL sports betting. The app will utilize various data sources, including game statistics, historical player performance, and betting odds, to provide users with predictions and recommendations. Users can interact with the platform to access detailed insights, receive betting tips, and analyze past performance data for more informed betting strategies.
+
