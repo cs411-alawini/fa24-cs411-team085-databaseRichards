@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFL Sports Betting Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        header {
+            background-color: #0a74da;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            background-color: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .section h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #0a74da;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .stat-box {
+            background-color: #ececec;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px;
+        }
+        .account-section {
+            display: flex;
+            justify-content: space-between;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>NFL Sports Betting Assistant</h1>
+    <p>Your data-driven guide to NFL sports betting</p>
+</header>
+
+<main>
+
+    <section class="section">
+        <h2>Betting Recommendations</h2>
+        <p>Get personalized betting recommendations based on your preferences and history.</p>
+        <a href="#" class="button">View Recommendations</a>
+    </section>
+
+    <section class="section">
+        <h2>Historical Performance Analysis</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Teams</h3>
+                <p>View team performance trends over time.</p>
+            </div>
+            <div class="stat-box">
+                <h3>Players</h3>
+                <p>Analyze individual player stats and performance.</p>
+            </div>
+            <div class="stat-box">
+                <h3>Simulations</h3>
+                <p>Simulate outcomes based on betting strategies.</p>
+            </div>
+        </div>
+        <a href="#" class="button">Analyze Data</a>
+    </section>
+
+    <section class="section account-section">
+        <div>
+            <h2>Your Account</h2>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
+            <a href="#" class="button">Login</a>
+        </div>
+        <div>
+            <h2>Your Betting History</h2>
+            <p>Track your previous bets and results.</p>
+            <a href="#" class="button">View History</a>
+        </div>
+    </section>
+
+</main>
+
+</body>
+</html>
