@@ -1,0 +1,34 @@
+<html>
+<head>
+    <title>Add Bet</title>
+</head>
+<body>
+    <h1>Add Bet for {{ username }}</h1>
+    <form action="/home/{{ username }}/add_bet" method="POST">
+        <label>Username:</label><br>
+        <input type="text" name="username" value="{{ username }}" readonly><br>
+        <label>HomeTeam:</label><br>
+        <input type="text" name="hometeam" required><br>
+        <label>AwayTeam:</label><br>
+        <input type="text" name="awayteam" required><br>
+        <label>Date:</label><br>
+        <input type="date" name="date" required><br>
+        <label>Bet Amount:</label><br>
+        <input type="number" name="bet_amount" required><br>
+        <label>Bet Type:</label><br>
+        <select name="bet_type" required>
+            <option value="Home">Home</option>
+            <option value="Away">Away</option>
+            <option value="Over">Over</option>
+            <option value="Under">Under</option>
+        </select><br><br>
+        <label>Bet Status:</label><br>
+        <select name="status" required>
+            <option value="WIN">WIN</option>
+            <option value="LOSS">LOSS</option>
+            <option value="INCOMPLETE">INCOMPLETE</option>
+        </select><br><br>
+        <button type="submit">Add Bet</button>
+    </form>
+</body>
+</html>

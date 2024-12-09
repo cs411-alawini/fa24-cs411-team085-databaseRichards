@@ -1,0 +1,43 @@
+<html>
+<head>
+    <title>Edit Bet</title>
+</head>
+<body>
+    <h1>Edit Bet for {{ username }}</h1>
+    <form action="/home/{{ username }}/edit_bet/{{ bet.hometeam }}/{{ bet.awayteam }}/{{ bet.date }}/{{ bet.type }}" method="POST">
+        <!-- Non-editable fields -->
+        <label>Username:</label><br>
+        <input type="text" name="username" value="{{ username }}" readonly><br>
+
+        <label>HomeTeam:</label><br>
+        <input type="text" name="hometeam" value="{{ bet.hometeam }}" readonly><br>
+
+        <label>AwayTeam:</label><br>
+        <input type="text" name="awayteam" value="{{ bet.awayteam }}" readonly><br>
+
+        <label>Date:</label><br>
+        <input type="date" name="date" value="{{ bet.date }}" readonly><br>
+
+        <label>Bet Type:</label><br>
+        <select name="bet_type" required>
+            <option value="Home" {% if bet.type == 'Home' %}selected{% endif %}>Home</option>
+            <option value="Away" {% if bet.type == 'Away' %}selected{% endif %}>Away</option>
+            <option value="Over" {% if bet.type == 'Over' %}selected{% endif %}>Over</option>
+            <option value="Under" {% if bet.type == 'Under' %}selected{% endif %}>Under</option>
+        </select><br><br>
+
+        <!-- Editable fields -->
+        <label>Bet Amount:</label><br>
+        <input type="number" name="bet_amount" value="" required><br> <!-- Empty bet amount field -->
+
+        <label>Bet Status:</label><br>
+        <select name="status" required>
+            <option value="WIN" {% if bet.status == 'WIN' %}selected{% endif %}>WIN</option>
+            <option value="LOSS" {% if bet.status == 'LOSS' %}selected{% endif %}>LOSS</option>
+            <option value="UNKNOWN" {% if bet.status == 'UNKNOWN' %}selected{% endif %}>UNKNOWN</option> <!-- Added "UNKNOWN" option -->
+        </select><br><br>
+
+        <button type="submit">Edit Bet</button>
+    </form>
+</body>
+</html>

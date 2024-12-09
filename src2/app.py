@@ -160,16 +160,16 @@ def home(username):
     return render_template('home.html', username=username, user_bets=formatted_bets, historical_data=mock_historical_data)
 
 
-@app.route('/add_bet', methods=['GET', 'POST'])
+@app.route('/home/<username>/add_bet', methods=['GET', 'POST'])
 def add_bet(username):
     if request.method == 'POST':
-        print("TEST")
-        # Handle adding the bet as in your original code
+        # Handle adding the bet
         try:
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
             
-            new_bet = request.json
+            # Retrieve form data
+            new_bet = request.form
             username = new_bet['username']
             home_team = new_bet['hometeam']
             away_team = new_bet['awayteam']
@@ -182,12 +182,12 @@ def add_bet(username):
             INSERT INTO UserBets (UserID, GameID, BetTypeID, Amount, Status)
             SELECT 
                 (SELECT UserID FROM UserInfo WHERE Username = %s) AS UserID,
-                (SELECT TOP 1 GameID 
+                (SELECT GameID 
                     FROM Games
                     WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
                     AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
                     AND GameDate = %s
-                    ORDER BY GameDate ASC) AS GameID,
+                    LIMIT 1) AS GameID,
                 (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) AS BetTypeID,
                 %s AS Amount,
                 %s AS Status
@@ -195,12 +195,6 @@ def add_bet(username):
                 (SELECT UserID FROM UserInfo WHERE Username = %s) IS NOT NULL
                 AND (SELECT TeamID FROM Teams WHERE TeamName = %s) IS NOT NULL
                 AND (SELECT TeamID FROM Teams WHERE TeamName = %s) IS NOT NULL
-                AND (SELECT TOP 1 GameID
-                        FROM Games
-                        WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                        AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                        AND GameDate = %s
-                        ORDER BY GameDate ASC) IS NOT NULL
                 AND (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) IS NOT NULL;
             '''
             cursor.execute(query, (
@@ -221,25 +215,97 @@ def add_bet(username):
             ))
             
             conn.commit()
-            return jsonify({"message": "Bet added successfully", "bet": new_bet}), 201
+            return jsonify({"message": "Bet added successfully"}), 201
 
         except mysql.connector.Error as err:
-            print(f"Error: {err}")
             return jsonify({"message": "Error adding bet", "error": str(err)}), 500
         finally:
             if conn:
                 conn.close()
     
-    # Handle GET request to show the bet form for the given username
+    # Render the add bet form for GET requests
     return render_template('add_bet.html', username=username)
 
+@app.route('/home/<username>/edit_bet/<hometeam>/<awayteam>/<date>/<type>', methods=['GET', 'POST'])
+def edit_bet(username, hometeam, awayteam, date, type):
+    if request.method == 'POST':
+        try:
+            conn = mysql.connector.connect(**db_config)
+            cursor = conn.cursor()
 
-# Edit an existing user bet
-@app.route('/edit_bet/<int:bet_id>', methods=['PUT'])
-def edit_bet(bet_id):
-    updated_bet = request.json
-    # Add logic to update the bet in the database
-    return jsonify({"message": "Bet updated successfully", "bet": updated_bet}), 200
+            form_data = request.form
+            username = form_data['username']
+            home_team = form_data['hometeam']
+            away_team = form_data['awayteam']
+            game_date = form_data['date']
+            bet_amount = form_data['bet_amount']
+            bet_status = form_data['status']
+            bet_type = form_data['bet_type']
+
+            query = '''
+
+            UPDATE UserBets
+            SET Status = %s
+            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+            AND GameID = (SELECT GameID 
+                          FROM Games
+                          WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+                          AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+                          AND GameDate = %s
+                          LIMIT 1)
+            AND BetTypeID = (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s);
+
+            SELECT UserID, GameID, BetTypeID, Amount, Status
+            FROM UserBets
+            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+            AND Status = 'Loss'
+
+            UNION
+
+            SELECT UserID, GameID, BetTypeID, Amount, Status
+            FROM UserBets
+            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+            AND Amount > (
+                SELECT AVG(TotalAmount)
+                FROM (
+                    SELECT SUM(Amount) AS TotalAmount
+                    FROM UserBets
+                    WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+                    GROUP BY BetTypeID
+                ) AS UserTotals
+            );
+
+            '''
+            cursor.execute(query, (
+                bet_status,
+                username,
+                home_team,
+                away_team,
+                game_date,
+                bet_type,
+                username,
+                username,
+                username
+            ) , multi=True)
+
+            conn.commit()
+            return jsonify({"message": "Bet updated and query executed successfully"}), 200
+
+        except mysql.connector.Error as err:
+            return jsonify({"message": "Error updating bet", "error": str(err)}), 500
+        finally:
+            if conn:
+                conn.close()
+
+    bet = {
+        'username': username,
+        'hometeam': hometeam,
+        'awayteam': awayteam,
+        'date': date,
+        'type': type,
+    }
+    return render_template('edit_bet.html', username=username, bet=bet)
+
 
 # Delete a user bet
 @app.route('/delete_bet/<int:bet_id>', methods=['DELETE'])
@@ -247,13 +313,113 @@ def delete_bet(bet_id):
     # Add logic to delete the bet from the database
     return jsonify({"message": "Bet deleted successfully", "bet_id": bet_id}), 200
 
-# Query historical betting data
+
 @app.route('/query_historical', methods=['GET'])
 def query_historical():
-    team = request.args.get('team')
-    year = request.args.get('year')
-    # Add logic to query historical data from the database
-    return jsonify({"team": team, "year": year, "data": mock_historical_data}), 200
+    home_team = request.args.get('home_team')
+    away_team = request.args.get('away_team')
+    game_date = request.args.get('game_date')
+
+    # Ensure at least one of the parameters is provided
+    if not home_team and not away_team and not game_date:
+        return jsonify({"error": "At least one parameter (home_team, away_team, or game_date) is required"}), 400
+
+    try:
+        connection = mysql.connector.connect(**db_config)
+        with connection.cursor(dictionary=True) as cursor:
+            # Base query
+            query = """
+                SELECT 
+                    g.GameID,
+                    g.GameDate,
+                    ht.TeamName AS HomeTeamName,
+                    at.TeamName AS AwayTeamName,
+                    g.WinTeamID,
+                    g.LoseTeamID,
+                    g.WinTeamScore,
+                    g.LoseTeamScore
+                FROM Games g
+                JOIN Teams ht ON g.HomeTeamID = ht.TeamID
+                JOIN Teams at ON g.AwayTeamID = at.TeamID
+                WHERE 1 = 1
+            """
+            params = []
+
+            # Add conditions dynamically
+            if home_team:
+                cursor.execute("SELECT TeamID FROM Teams WHERE TeamName = %s", (home_team,))
+                home_team_id = cursor.fetchone()
+                if not home_team_id:
+                    return jsonify({"error": f"Home team '{home_team}' not found"}), 404
+                query += " AND g.HomeTeamID = %s"
+                params.append(home_team_id['TeamID'])
+
+            if away_team:
+                cursor.execute("SELECT TeamID FROM Teams WHERE TeamName = %s", (away_team,))
+                away_team_id = cursor.fetchone()
+                if not away_team_id:
+                    return jsonify({"error": f"Away team '{away_team}' not found"}), 404
+                query += " AND g.AwayTeamID = %s"
+                params.append(away_team_id['TeamID'])
+
+            if game_date:
+                query += " AND g.GameDate = %s"
+                params.append(game_date)
+
+            # Execute the query with the dynamically added conditions
+            cursor.execute(query, params)
+            games = cursor.fetchall()
+
+
+            # Return found games
+            return jsonify({"games": games}), 200
+
+    except mysql.connector.Error as err:
+        # Handle database errors
+        return jsonify({"error": f"Database error: {err}"}), 500
+
+    except Exception as e:
+        # Handle unexpected errors
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        # Ensure the database connection is closed
+        if connection.is_connected():
+            connection.close()
+
+
+@app.route('/top5_average_points', methods=['GET'])
+def top5_average_points():
+    query = """ CALL GetTop5AveragePoints(); """
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query)
+        results = cursor.fetchall()
+        return jsonify(results), 200
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/GetTopTeamsByWinPercentage', methods=['GET'])
+def GetTopTeamsByWinPercentage():
+    query = """ CALL GetTopTeamsByWinPercentage();"""
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query)
+        results = cursor.fetchall()
+        return jsonify(results), 200
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

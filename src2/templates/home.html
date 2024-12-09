@@ -3,45 +3,7 @@
 <head>
     <title>Home</title>
     <style>
-        #container {
-            display: flex;
-        }
-        #left, #right {
-            width: 50%;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        #right select {
-            display: block;
-            margin-bottom: 10px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        button {
-            margin: 5px;
-        }
-        .win {
-            background-color: green;
-            color: white;
-        }
-        .loss {
-            background-color: red;
-            color: white;
-        }
-        .incomplete {
-            background-color: yellow;
-            color: black;
-        }
+        /* Add your styles here */
     </style>
 </head>
 <body>
@@ -72,62 +34,132 @@
                             <td>${{ bet.bet_amount }}</td>
                             <td class="{{ bet.status|lower }}">{{ bet.status }}</td>
                             <td>
-                                <button>Edit</button>
-                                <button>Delete</button>
-                            </td>
+                                <form action="/home/{{ username }}/edit_bet/{{ bet.hometeam }}/{{ bet.awayteam }}/{{ bet.date }}/{{ bet.type }}" style="display:inline;">
+                                    <button type="submit">Edit</button>
+                                </form>                                
+                                <form action="/home/{{ username }}/delete_bet/{{ bet.id }}" method="POST" style="display:inline;">
+                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this bet?');">Delete</button>
+                                </form>
+                            </td>                        
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-
-            <h3>Add New Bet</h3>
-            <form id="add-bet-form">
-                <label>Username:</label><br>
-                <input type="text" name="username" value="{{ username }}" readonly><br>
-                <label>HomeTeam:</label><br>
-                <input type="text" name="hometeam" required><br>
-                <label>AwayTeam:</label><br>
-                <input type="text" name="awayteam" required><br>
-                <label>Date:</label><br>
-                <input type="date" name="date" required><br>
-                <label>Bet Amount:</label><br>
-                <input type="number" name="bet_amount" required><br>
-                <label>Bet Type:</label><br>
-                <select name="bet_type" required>
-                    <option value="Home">Home</option>
-                    <option value="Away">Away</option>
-                    <option value="Over">Over</option>
-                    <option value="Under">Under</option>
-                </select><br><br>
-                <label>Bet Status:</label><br>
-                <select name="status" required>
-                    <option value="WIN">WIN</option>
-                    <option value="LOSS">LOSS</option>
-                    <option value="INCOMPLETE">INCOMPLETE</option>
-                </select><br><br>
-                <button type="submit">Add Bet</button>
-            </form>
+            <a href="/home/{{ username }}/add_bet">
+                <button>Add Bet</button>
+            </a>
         </div>
 
         <!-- Historical Data -->
         <div id="right">
             <h2>Historical Data</h2>
-            <form id="historical-query-form">
-                <label>Team:</label>
-                <select name="team">
-                    <option value="Team A">Team A</option>
-                    <option value="Team B">Team B</option>
+            <form id="historical-query-form" action="/query_historical" method="GET">
+                <!-- Home Team -->
+                <label for="home-team">Home Team:</label>
+                <select id="home-team" name="home_team">
+                    <option value="POR">Portland Trail Blazers (POR)</option>
+                    <option value="LAL">Los Angeles Lakers (LAL)</option>
+                    <option value="SAC">Sacramento Kings (SAC)</option>
+                    <option value="GSW">Golden State Warriors (GSW)</option>
                 </select>
-                <label>Year:</label>
-                <select name="year">
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
+        
+                <!-- Away Team -->
+                <label for="away-team">Away Team:</label>
+                <select id="away-team" name="away_team">
+                    <option value="POR">Portland Trail Blazers (POR)</option>
+                    <option value="LAL">Los Angeles Lakers (LAL)</option>
+                    <option value="SAC">Sacramento Kings (SAC)</option>
+                    <option value="GSW">Golden State Warriors (GSW)</option>
                 </select>
+        
+                <!-- Game Date -->
+                <label for="game-date">Game Date:</label>
+                <input type="date" id="game-date" name="game_date">
+        
+                <!-- Submit Button -->
                 <button type="submit">Query</button>
             </form>
+        
+            <!-- New Button -->
+            
+        
+            <!-- Historical Results Section -->
             <div id="historical-results">
+                <h3>Query Results</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Game ID</th>
+                            <th>Date</th>
+                            <th>Home Team</th>
+                            <th>Away Team</th>
+                            <th>Win Team Score</th>
+                            <th>Lose Team Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
             </div>
         </div>
+        
+        
     </div>
+    <script>
+        document.getElementById('historical-query-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const homeTeam = document.getElementById('home-team').value;
+            const awayTeam = document.getElementById('away-team').value;
+            const gameDate = document.getElementById('game-date').value;
+
+            const queryParams = new URLSearchParams({
+                home_team: homeTeam,
+                away_team: awayTeam,
+                game_date: gameDate
+            });
+
+            try {
+                const response = await fetch(`/query_historical?${queryParams.toString()}`);
+                const data = await response.json();
+
+                const resultsBody = document.getElementById('results-body');
+                resultsBody.innerHTML = ''; // Clear previous results
+
+                if (data.games && data.games.length > 0) {
+                    data.games.forEach(game => {
+                        const row = document.createElement('tr');
+
+                        row.innerHTML = `
+                            <td>${game.GameID}</td>
+                            <td>${new Date(game.GameDate).toLocaleDateString()}</td>
+                            <td>${game.HomeTeamName}</td>
+                            <td>${game.AwayTeamName}</td>
+                            <td>${game.WinTeamScore}</td>
+                            <td>${game.LoseTeamScore}</td>
+                        `;
+
+                        resultsBody.appendChild(row);
+                    });
+                } else {
+                    const noResultsRow = document.createElement('tr');
+                    noResultsRow.innerHTML = `<td colspan="6">No games found</td>`;
+                    resultsBody.appendChild(noResultsRow);
+                }
+            } catch (error) {
+                console.error('Error fetching historical data:', error);
+                const resultsBody = document.getElementById('results-body');
+                resultsBody.innerHTML = `<tr><td colspan="6">Error fetching data</td></tr>`;
+            }
+        });
+
+
+
+        // When "TopWinPercentage" button is clicked
+
+    </script>
+
+    
 </body>
 </html>
