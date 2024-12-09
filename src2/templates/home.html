@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home</title>
+    <style>
+        #container {
+            display: flex;
+        }
+        #left, #right {
+            width: 50%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #right select {
+            display: block;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            margin: 5px;
+        }
+        .win {
+            background-color: green;
+            color: white;
+        }
+        .loss {
+            background-color: red;
+            color: white;
+        }
+        .incomplete {
+            background-color: yellow;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome, {{ username }}</h1>
+    <div id="container">
+        <!-- User Bets -->
+        <div id="left">
+            <h2>Your Bets</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hometeam</th>
+                        <th>Awayteam</th>
+                        <th>Date</th>
+                        <th>Bet Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bet in user_bets %}
+                        <tr>
+                            <td>{{ bet.hometeam }}</td>
+                            <td>{{ bet.awayteam }}</td>
+                            <td>{{ bet.date }}</td>
+                            <td>{{ bet.type }}</td>
+                            <td>${{ bet.bet_amount }}</td>
+                            <td class="{{ bet.status|lower }}">{{ bet.status }}</td>
+                            <td>
+                                <button>Edit</button>
+                                <button>Delete</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h3>Add New Bet</h3>
+            <form id="add-bet-form">
+                <label>Username:</label><br>
+                <input type="text" name="username" value="{{ username }}" readonly><br>
+                <label>HomeTeam:</label><br>
+                <input type="text" name="hometeam" required><br>
+                <label>AwayTeam:</label><br>
+                <input type="text" name="awayteam" required><br>
+                <label>Date:</label><br>
+                <input type="date" name="date" required><br>
+                <label>Bet Amount:</label><br>
+                <input type="number" name="bet_amount" required><br>
+                <label>Bet Type:</label><br>
+                <select name="bet_type" required>
+                    <option value="Home">Home</option>
+                    <option value="Away">Away</option>
+                    <option value="Over">Over</option>
+                    <option value="Under">Under</option>
+                </select><br><br>
+                <label>Bet Status:</label><br>
+                <select name="status" required>
+                    <option value="WIN">WIN</option>
+                    <option value="LOSS">LOSS</option>
+                    <option value="INCOMPLETE">INCOMPLETE</option>
+                </select><br><br>
+                <button type="submit">Add Bet</button>
+            </form>
+        </div>
+
+        <!-- Historical Data -->
+        <div id="right">
+            <h2>Historical Data</h2>
+            <form id="historical-query-form">
+                <label>Team:</label>
+                <select name="team">
+                    <option value="Team A">Team A</option>
+                    <option value="Team B">Team B</option>
+                </select>
+                <label>Year:</label>
+                <select name="year">
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                </select>
+                <button type="submit">Query</button>
+            </form>
+            <div id="historical-results">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
