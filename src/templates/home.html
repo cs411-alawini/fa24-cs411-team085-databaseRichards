@@ -1,0 +1,94 @@
+<!-- Home Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betting Assistant</title>
+    <style>
+        /* Base Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        
+        h1 {
+            margin-top: 20px;
+        }
+
+        a {
+            display: block;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        a:hover {
+            background-color: #0056b3;
+        }
+
+        /* Light Mode */
+        :root {
+            --bg-color: #fff;
+            --text-color: #333;
+            --link-color: #007bff;
+            --link-hover-color: #0056b3;
+        }
+
+        /* Dark Mode */
+        [data-theme='dark'] {
+            --bg-color: #121212;
+            --text-color: #fff;
+            --link-color: #4a90e2;
+            --link-hover-color: #1a73e8;
+        }
+
+        /* Sun and Moon Emoji Button */
+        .toggle-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <h1>Betting Assistant</h1>
+    <a href="/login">Login</a>
+    <a href="/register">Register</a>
+
+    <button class="toggle-button" onclick="toggleTheme()">🌙</button>
+
+    <script>
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                document.querySelector('.toggle-button').textContent = '🌙';  // Set to moon (dark mode)
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.querySelector('.toggle-button').textContent = '🌞';  // Set to sun (light mode)
+            }
+        }
+    </script>
+</body>
+</html>
