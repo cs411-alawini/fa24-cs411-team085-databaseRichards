@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bet Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>List of Bets with below average amount</h1>
+    {% if bets %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Bet Amount</th>
+                    <th>Type of Bet</th>
+                    <th>Home Team</th>
+                    <th>Away Team</th>
+                    <th>Game Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bet in bets %}
+                    <tr>
+                        <td>{{ bet[0] }}</td>
+                        <td>{{ bet[1] }}</td>
+                        <td>{{ bet[2] }}</td>
+                        <td>{{ bet[3] }}</td>
+                        <td>{{ bet[4] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No bets available to display.</p>
+    {% endif %}
+</body>
+</html>

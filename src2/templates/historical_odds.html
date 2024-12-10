@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Odds</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .details {
+            margin-top: 20px;
+        }
+        .details div {
+            margin-bottom: 10px;
+        }
+        .details span {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Historical Odds</h1>
+        <div class="details">
+            <div>
+                <span>Username:</span> {{ username }}
+            </div>
+            <div>
+                <span>Home Team:</span> {{ home_team }}
+            </div>
+            <div>
+                <span>Away Team:</span> {{ away_team }}
+            </div>
+            <div>
+                <span>Bet Type:</span> {{ bet_type }}
+            </div>
+            <div>
+                <span>Average Odds:</span> {{ average_odds }}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

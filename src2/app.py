@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
 import mysql.connector
 import random
+from decimal import Decimal
+
 
 
 app = Flask(__name__)
@@ -156,7 +158,6 @@ def retreive_user_bets(username):
 @app.route('/home/<username>')
 def home(username):
     formatted_bets = retreive_user_bets(username)
-    print(formatted_bets)
     return render_template('home.html', username=username, user_bets=formatted_bets, historical_data=mock_historical_data)
 
 
@@ -167,7 +168,7 @@ def add_bet(username):
         try:
             conn = mysql.connector.connect(**db_config)
             cursor = conn.cursor()
-            
+
             # Retrieve form data
             new_bet = request.form
             username = new_bet['username']
@@ -179,43 +180,63 @@ def add_bet(username):
             status = new_bet['status']
             
             query = '''
-            INSERT INTO UserBets (UserID, GameID, BetTypeID, Amount, Status)
-            SELECT 
-                (SELECT UserID FROM UserInfo WHERE Username = %s) AS UserID,
-                (SELECT GameID 
-                    FROM Games
-                    WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                    AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                    AND GameDate = %s
-                    LIMIT 1) AS GameID,
-                (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) AS BetTypeID,
-                %s AS Amount,
-                %s AS Status
-            WHERE 
-                (SELECT UserID FROM UserInfo WHERE Username = %s) IS NOT NULL
-                AND (SELECT TeamID FROM Teams WHERE TeamName = %s) IS NOT NULL
-                AND (SELECT TeamID FROM Teams WHERE TeamName = %s) IS NOT NULL
-                AND (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) IS NOT NULL;
+            SELECT GameID
+            FROM Games
+            WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+            AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+            AND GameDate = %s
+            LIMIT 1;
             '''
-            cursor.execute(query, (
-                username,
-                home_team,
-                away_team,
-                game_date,
-                bet_type,
-                bet_amount,
-                status,
-                username,
-                home_team,
-                away_team,
-                home_team,
-                away_team,
-                game_date,
-                bet_type
-            ))
+            cursor.execute(query, (home_team, away_team, game_date))
+            game_id = cursor.fetchone()
+            game_id = game_id[0] if game_id else None
+            print("GameID", game_id)
+            query = '''
+                START TRANSACTION;    
+--              SET TRANSACTION ISOLATION LEVEL REPEATABLE READ COMMITTED;
+                INSERT INTO UserBets (UserID, GameID, BetTypeID, Amount, Status)
+                SELECT 
+                    (SELECT UserID FROM UserInfo WHERE Username = %s) AS UserID,
+                    %s AS GameID,
+                    (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) AS BetTypeID,
+                    %s AS Amount,
+                    %s AS Status
+                WHERE 
+                    (SELECT UserID FROM UserInfo WHERE Username = %s) IS NOT NULL
+                    AND (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s) IS NOT NULL;
             
+                SELECT ho.*, bt.BetTypeName, ht.TeamName AS HomeTeamName, at.TeamName AS AwayTeamName
+                FROM HistoricalOdds ho
+                JOIN Games g ON ho.GameID = g.GameID
+                JOIN Teams ht ON g.HomeTeamID = ht.TeamID
+                JOIN Teams at ON g.AwayTeamID = at.TeamID
+                JOIN BetTypes bt ON ho.BetTypeID = bt.BetTypeID
+                WHERE ht.TeamName = %s AND at.TeamName = %s;
+
+                COMMIT;
+            '''
+        
+            content = []
+            for result in cursor.execute(query, (
+                    username,
+                    game_id,
+                    bet_type,
+                    bet_amount,
+                    status,
+                    username,
+                    bet_type,
+                    home_team,
+                    away_team,
+            ), multi=True):
+                if result.with_rows:
+                    content += cursor.fetchall()
+
+            filtered_odds = [record[3] for record in content if record[4] == bet_type]
+            average_odds = sum(filtered_odds) / len(filtered_odds) if filtered_odds else None
+
+
             conn.commit()
-            return jsonify({"message": "Bet added successfully"}), 201
+            return render_template('historical_odds.html', odds=filtered_odds, average_odds=average_odds, username=username, home_team=home_team, away_team=away_team, game_date=game_date, bet_type=bet_type)
 
         except mysql.connector.Error as err:
             return jsonify({"message": "Error adding bet", "error": str(err)}), 500
@@ -242,41 +263,63 @@ def edit_bet(username, hometeam, awayteam, date, type):
             bet_status = form_data['status']
             bet_type = form_data['bet_type']
 
-            query = '''
+            # query = '''
+            #     COMMIT;
+            # '''
 
-            UPDATE UserBets
-            SET Status = %s
-            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
-            AND GameID = (SELECT GameID 
-                          FROM Games
-                          WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                          AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
-                          AND GameDate = %s
-                          LIMIT 1)
-            AND BetTypeID = (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s);
+            # cursor.execute(query, (
+            #     # bet_status,
+            #     # username,
+            #     # home_team,
+            #     # away_team,
+            #     # game_date,
+            #     # bet_type,
+            #     # username,
+            #     # bet_status,
+            #     # username
+            # ) , multi=False)
 
-            SELECT UserID, GameID, BetTypeID, Amount, Status
-            FROM UserBets
-            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
-            AND Status = 'Loss'
+            query2 = '''
+                    START TRANSACTION;    
+--                  SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
-            UNION
-
-            SELECT UserID, GameID, BetTypeID, Amount, Status
-            FROM UserBets
-            WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
-            AND Amount > (
-                SELECT AVG(TotalAmount)
-                FROM (
-                    SELECT SUM(Amount) AS TotalAmount
-                    FROM UserBets
+                    UPDATE UserBets
+                    SET Status = %s
                     WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
-                    GROUP BY BetTypeID
-                ) AS UserTotals
-            );
+                    AND GameID = (SELECT GameID 
+                                FROM Games
+                                WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+                                AND AwayTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s)
+                                AND GameDate = %s
+                                LIMIT 1)
+                    AND BetTypeID = (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s);
 
+                    SELECT 
+                    ub.UserID,
+                    ub.GameID,
+                    ub.BetTypeID,
+                    ub.Amount,
+                    ub.Status,
+                    ht.TeamName AS HomeTeamName,
+                    at.TeamName AS AwayTeamName,
+                    g.GameDate
+                    FROM UserBets ub
+                    JOIN Games g ON ub.GameID = g.GameID
+                    JOIN Teams ht ON g.HomeTeamID = ht.TeamID
+                    JOIN Teams at ON g.AwayTeamID = at.TeamID
+                    WHERE ub.UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+                        AND ub.Status = %s
+                        AND ub.Amount <= (
+                            SELECT AVG(Amount)
+                            FROM UserBets
+                    WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s)
+                    );
+                    COMMIT;
             '''
-            cursor.execute(query, (
+
+            content = []
+
+            for result in cursor.execute(query2, (
                 bet_status,
                 username,
                 home_team,
@@ -284,12 +327,28 @@ def edit_bet(username, hometeam, awayteam, date, type):
                 game_date,
                 bet_type,
                 username,
-                username,
+                bet_status,
                 username
-            ) , multi=True)
+            ), multi=True):
+                if result.with_rows:
+                    content += result.fetchall()
+
+            # content = cursor.fetchall()
 
             conn.commit()
-            return jsonify({"message": "Bet updated and query executed successfully"}), 200
+
+            print(content)
+
+            bets = [i[3:] for i in content]
+
+            # print(content[0][3:])
+
+
+            return render_template('below_average_bets.html', bets=bets)
+
+            # return jsonify({
+            #     "content": content,
+            #     "message": "Bet updated and query executed successfully"}), 200
 
         except mysql.connector.Error as err:
             return jsonify({"message": "Error updating bet", "error": str(err)}), 500
@@ -304,15 +363,97 @@ def edit_bet(username, hometeam, awayteam, date, type):
         'date': date,
         'type': type,
     }
+
     return render_template('edit_bet.html', username=username, bet=bet)
 
 
-# Delete a user bet
-@app.route('/delete_bet/<int:bet_id>', methods=['DELETE'])
-def delete_bet(bet_id):
-    # Add logic to delete the bet from the database
-    return jsonify({"message": "Bet deleted successfully", "bet_id": bet_id}), 200
+@app.route('/home/<username>/delete_bet', methods=['POST'])
+def delete_bet(username):
+    hometeam = request.form['hometeam']
+    awayteam = request.form['awayteam']
+    date = request.form['date']
+    bet_type = request.form['type']
+    
+    query = """ DELETE FROM UserBets
+    WHERE UserID = (SELECT UserID FROM UserInfo WHERE Username = %s) AND GameID = (SELECT GameID FROM Games
+    WHERE HomeTeamID = (SELECT TeamID FROM Teams WHERE TeamName = %s) AND AwayTeamID = (SELECT TeamID FROM Teams
+    WHERE TeamName = %s) AND GameDate = %s) AND BetTypeID = (SELECT BetTypeID FROM BetTypes WHERE BetTypeName = %s);
+    """
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute(query, (username, hometeam, awayteam, date, bet_type))
+        conn.commit()
+        return jsonify({"message": "Bet deleted successfully"}), 200
+    except mysql.connector.Error as err:
+        return jsonify({"message": "Error deleting bet", "error": str(err)}), 500
+    finally:
+        if conn:
+            conn.close()
 
+def calculate_team_likelihood(games_data):
+    if not games_data:
+        return {"error": "No games data provided for likelihood calculation"}
+
+    team_stats = {}
+
+    for game in games_data:
+        home_team = game['HomeTeamName']
+        away_team = game['AwayTeamName']
+        win_team = game['WinTeamName']
+
+        lose_team = home_team if win_team == away_team else away_team
+        point_diff = game['WinTeamScore'] - game['LoseTeamScore']
+
+        if home_team not in team_stats:
+            team_stats[home_team] = {'wins': 0, 'point_diff': 0, 'games': 0}
+        if away_team not in team_stats:
+            team_stats[away_team] = {'wins': 0, 'point_diff': 0, 'games': 0}
+
+        team_stats[win_team]['games'] += 1
+        team_stats[win_team]['wins'] += 1
+        team_stats[win_team]['point_diff'] += point_diff
+
+        team_stats[lose_team]['games'] += 1
+        team_stats[lose_team]['point_diff'] -= point_diff
+
+    for team, stats in team_stats.items():
+        if stats['games'] > 0:
+            stats['win_percentage'] = stats['wins'] / stats['games']
+            stats['avg_point_diff'] = stats['point_diff'] / stats['games']
+        else:
+            stats['win_percentage'] = 0.0
+            stats['avg_point_diff'] = 0.0
+
+    home_team = games_data[0]['HomeTeamName']
+    away_team = games_data[0]['AwayTeamName']
+
+    if home_team not in team_stats or away_team not in team_stats:
+        return {"error": "Could not find statistics for one or both of the teams"}
+
+    home_stats = team_stats[home_team]
+    away_stats = team_stats[away_team]
+
+    home_raw_score = home_stats['win_percentage'] + (home_stats['avg_point_diff'] * 0.2)
+    away_raw_score = away_stats['win_percentage'] + (away_stats['avg_point_diff'] * 0.2)
+
+    home_score = max(home_raw_score, 0)
+    away_score = max(away_raw_score, 0)
+
+    total_score = home_score + away_score
+    if total_score == 0:
+        home_likelihood = 50.0
+        away_likelihood = 50.0
+    else:
+        home_likelihood = (home_score / total_score) * 100
+        away_likelihood = (away_score / total_score) * 100
+
+    return {
+        'HomeTeam': home_team,
+        'AwayTeam': away_team,
+        'HomeTeamLikelihood': round(home_likelihood, 2),
+        'AwayTeamLikelihood': round(away_likelihood, 2)
+    }
 
 @app.route('/query_historical', methods=['GET'])
 def query_historical():
@@ -320,32 +461,28 @@ def query_historical():
     away_team = request.args.get('away_team')
     game_date = request.args.get('game_date')
 
-    # Ensure at least one of the parameters is provided
     if not home_team and not away_team and not game_date:
         return jsonify({"error": "At least one parameter (home_team, away_team, or game_date) is required"}), 400
 
     try:
         connection = mysql.connector.connect(**db_config)
         with connection.cursor(dictionary=True) as cursor:
-            # Base query
             query = """
                 SELECT 
                     g.GameID,
                     g.GameDate,
                     ht.TeamName AS HomeTeamName,
                     at.TeamName AS AwayTeamName,
-                    g.WinTeamID,
-                    g.LoseTeamID,
+                    wt.TeamName AS WinTeamName,
                     g.WinTeamScore,
                     g.LoseTeamScore
                 FROM Games g
                 JOIN Teams ht ON g.HomeTeamID = ht.TeamID
                 JOIN Teams at ON g.AwayTeamID = at.TeamID
-                WHERE 1 = 1
+                JOIN Teams wt ON g.WinTeamID = wt.TeamID
             """
             params = []
 
-            # Add conditions dynamically
             if home_team:
                 cursor.execute("SELECT TeamID FROM Teams WHERE TeamName = %s", (home_team,))
                 home_team_id = cursor.fetchone()
@@ -366,58 +503,107 @@ def query_historical():
                 query += " AND g.GameDate = %s"
                 params.append(game_date)
 
-            # Execute the query with the dynamically added conditions
             cursor.execute(query, params)
             games = cursor.fetchall()
-
-
-            # Return found games
-            return jsonify({"games": games}), 200
+            print(games)
+            likelihoods = calculate_team_likelihood(games)
+            print(likelihoods)
+            return jsonify({"games": games, "likelihoods": likelihoods}), 200
 
     except mysql.connector.Error as err:
-        # Handle database errors
         return jsonify({"error": f"Database error: {err}"}), 500
 
     except Exception as e:
-        # Handle unexpected errors
         return jsonify({"error": str(e)}), 500
 
     finally:
-        # Ensure the database connection is closed
         if connection.is_connected():
             connection.close()
 
 
 @app.route('/top5_average_points', methods=['GET'])
 def top5_average_points():
-    query = """ CALL GetTop5AveragePoints(); """
+    query = "CALL GetTop5AveragePoints();"
+    # query = '''
+    #     SELECT t.TeamName, AVG(TeamScores.PointsScored) AS AveragePoints
+    # FROM (
+    #     SELECT HomeTeamID AS TeamID, 
+    #            CASE 
+    #                WHEN HomeTeamID = WinTeamID THEN WinTeamScore
+    #                ELSE LoseTeamScore 
+    #            END AS PointsScored
+    #     FROM Games
+    #     UNION ALL
+    #     SELECT AwayTeamID AS TeamID, 
+    #            CASE 
+    #                WHEN AwayTeamID = WinTeamID THEN WinTeamScore
+    #                ELSE LoseTeamScore 
+    #            END AS PointsScored
+    #     FROM Games
+    # ) AS TeamScores
+    # JOIN Teams t ON TeamScores.TeamID = t.TeamID                                                                                                                                  
+    # GROUP BY t.TeamName
+    # ORDER BY AveragePoints DESC
+    # LIMIT 5;
+    # '''
     try:
+        content = []
         conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(query)
-        results = cursor.fetchall()
-        return jsonify(results), 200
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        for result in cursor.execute(query, multi=True):
+            if result.with_rows:
+                content += result.fetchall()
+        results = content
+        return render_template('topaveragepoints.html', results=results)
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
     finally:
         cursor.close()
         conn.close()
-
 
 @app.route('/GetTopTeamsByWinPercentage', methods=['GET'])
 def GetTopTeamsByWinPercentage():
-    query = """ CALL GetTopTeamsByWinPercentage();"""
+    query = "CALL GetTopTeamsByWinPercentage();"
+
+    # query = """
+        # WITH TotalGamesPerTeam AS (
+        #     SELECT TeamID, COUNT(*) AS TotalGames
+        #     FROM (
+        #         SELECT HomeTeamID AS TeamID FROM Games
+        #         UNION ALL
+        #         SELECT AwayTeamID AS TeamID FROM Games
+        #     ) AS AllGames
+        #     GROUP BY TeamID
+        # ),
+        # TotalWinsPerTeam AS (
+        #     SELECT WinTeamID AS TeamID, COUNT(*) AS Wins
+        #     FROM Games
+        #     WHERE WinTeamID IS NOT NULL
+        #     GROUP BY WinTeamID
+        # )
+        # SELECT 
+        #     Teams.TeamName,
+        #     TotalGamesPerTeam.TotalGames,
+        #     COALESCE(TotalWinsPerTeam.Wins, 0) AS Wins,
+        #     (COALESCE(TotalWinsPerTeam.Wins, 0) * 100.0 / TotalGamesPerTeam.TotalGames) AS WinPercentage
+        # FROM Teams
+        # JOIN TotalGamesPerTeam ON Teams.TeamID = TotalGamesPerTeam.TeamID
+        # LEFT JOIN TotalWinsPerTeam ON Teams.TeamID = TotalWinsPerTeam.TeamID
+        # ORDER BY WinPercentage DESC
+        # LIMIT 15;
+    # """
     try:
+        content = []
         conn = mysql.connector.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(query)
-        results = cursor.fetchall()
-        return jsonify(results), 200
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        for result in cursor.execute(query, multi=True):
+            if result.with_rows:
+                content += result.fetchall()
+        results = content
+        return render_template('topteamswinpercent.html', results=results)
+    
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
-    finally:
-        cursor.close()
-        conn.close()
 
 
 

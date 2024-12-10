@@ -34,7 +34,7 @@
         <select name="status" required>
             <option value="WIN" {% if bet.status == 'WIN' %}selected{% endif %}>WIN</option>
             <option value="LOSS" {% if bet.status == 'LOSS' %}selected{% endif %}>LOSS</option>
-            <option value="UNKNOWN" {% if bet.status == 'UNKNOWN' %}selected{% endif %}>UNKNOWN</option> <!-- Added "UNKNOWN" option -->
+            <option value="INCOMPLETE" {% if bet.status == 'INCOMPLETE' %}selected{% endif %}>INCOMPLETE</option>
         </select><br><br>
 
         <button type="submit">Edit Bet</button>
